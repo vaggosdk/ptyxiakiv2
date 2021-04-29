@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">ptyxiakiv2</string>
+    <string name="mapbox_access_token" translatable="false">pk.eyJ1IjoidmFnZ29zZGsiLCJhIjoiY2tsbTQ4dGVsMDVtMjJ1bjNsdDR5ODBmeCJ9.DuTWO5pN6njCQEJtg8d1CA</string>
+    <string name="user_location_permission_not_granted">Υou have not granted location permissions</string>
+    <string name="user_location_permission_explanation">Please grant location permissions</string>
+    <string name="location_picker_select_location_button_cancel">Cancel</string>
+    <string name="location_picker_select_location_button_select">Select a location</string>
+    <string name="location_picker_dropped_marker_snippet_no_results">No results</string>
+    <string name="location_picker_place_name_result">Place name: %1$s</string>
+
+    <string name="move_map_instruction">You can move the map</string>
+    <string name="Start_Navigation">Start Navigation</string>
+    <string name="title_activity_navigation">navigationActivity</string>
+    <!--
+    This string is used for square devices and overridden by hello_world in
+    values-round/strings.xml for round devices.
+    -->
+    <string name="hello_world">Hello Square World!</string>
+
+</resources>

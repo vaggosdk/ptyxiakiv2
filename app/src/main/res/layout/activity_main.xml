@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:mapbox="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+
+    <com.mapbox.mapboxsdk.maps.MapView
+        android:id="@+id/mapView"
+        android:layout_width="match_parent"
+        android:layout_height="641dp"
+        mapbox:mapbox_cameraZoom="12">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/current_speed"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <Button
+                android:id="@+id/button"
+                android:layout_width="337dp"
+                android:layout_height="65dp"
+                android:text="@string/Start_Navigation"
+                mapbox:layout_constraintBottom_toBottomOf="parent"
+                mapbox:layout_constraintEnd_toEndOf="parent"
+                mapbox:layout_constraintStart_toStartOf="parent"
+                mapbox:layout_constraintTop_toTopOf="parent"
+                mapbox:layout_constraintVertical_bias="0.941" />
+
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+    </com.mapbox.mapboxsdk.maps.MapView>
+
+    <TextView
+        android:id="@+id/cur_speed"
+        android:layout_width="100dp"
+        android:layout_height="90dp"
+        android:layout_gravity="bottom"
+        android:text="TextView" />
+
+</FrameLayout>
