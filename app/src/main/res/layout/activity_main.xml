@@ -36,9 +36,10 @@
 
     <TextView
         android:id="@+id/cur_speed"
-        android:layout_width="100dp"
+        android:layout_width="122dp"
         android:layout_height="90dp"
         android:layout_gravity="bottom"
-        android:text="TextView" />
+        android:text="@string/text_view_speedometer"
+        android:textSize="30sp" />
 
 </FrameLayout>

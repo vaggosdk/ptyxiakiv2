@@ -1,11 +1,21 @@
 package com.example.ptyxiakiv2;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -15,7 +25,6 @@ import android.widget.Toast;
 
 import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 
@@ -26,6 +35,7 @@ import com.mapbox.android.core.location.LocationEngineRequest;
 import com.mapbox.android.core.location.LocationEngineResult;
 import com.mapbox.api.directions.v5.models.DirectionsResponse;
 import com.mapbox.api.directions.v5.models.DirectionsRoute;
+import com.mapbox.api.directions.v5.models.LegStep;
 import com.mapbox.mapboxsdk.plugins.traffic.TrafficPlugin;
 import com.mapbox.services.android.navigation.ui.v5.NavigationLauncher;
 import com.mapbox.services.android.navigation.ui.v5.NavigationLauncherOptions;
@@ -57,7 +67,9 @@ import com.mapbox.mapboxsdk.style.sources.GeoJsonSource;
 import com.mapbox.services.android.navigation.v5.routeprogress.RouteProgress;
 
 import java.lang.ref.WeakReference;
+import java.util.Formatter;
 import java.util.List;
+import java.util.Locale;
 
 
 import retrofit2.Call;
@@ -82,6 +94,13 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
     private MapView mapView;
     private NavigationView navigationView;
     private MapboxMap mapboxMap;
+    private static final String[] LOCATION_PERMS={
+            Manifest.permission.ACCESS_FINE_LOCATION
+    };
+    private static final int PERMISSION_REQUEST_LOCATION = 0;
+
+    private static final int INITIAL_REQUEST=1337;
+
     private PermissionsManager permissionsManager;
     private LocationComponent locationComponent;
     private Button button;
@@ -90,27 +109,54 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
     private static final String TAG = "DirectionsActivity";
     private long DEFAULT_INTERVAL_IN_MILLISECONDS = 1000L;
     private long DEFAULT_MAX_WAIT_TIME = DEFAULT_INTERVAL_IN_MILLISECONDS * 5;
-    float speed = 10;
+    private double rec_speed = 1000;
+    private TextView textViewSpeed;
+    private double duration;
+    private double duration_Typical;
+    private AlertDialog.Builder builder;
+    OncomingTraffic oncomingTraffic = new OncomingTraffic();
+    int traffic_ahead = oncomingTraffic.traffic_situation;
+    boolean incidents = oncomingTraffic.incident_situation;
     //private TextView speedWidget;
-
+    private static final String[] INITIAL_PERMS={
+            Manifest.permission.ACCESS_FINE_LOCATION
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        
+
+        if (!canAccessLocation()) {
+            //requestPermissions(INITIAL_PERMS, INITIAL_REQUEST);
+            permissionsManager = new PermissionsManager(this);
+            permissionsManager.requestLocationPermissions(this);
+//            while (!canAccessLocation()){
+//                try {
+//                    Thread.sleep(10);
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
+//
+//            }
+        }
+
         // Mapbox access token is configured here. This needs to be called either in your application
         // object or in the same activity which contains the mapview.
         Mapbox.getInstance(this, getString(mapbox_access_token));
 
         // This contains the MapView in XML and needs to be called after the access token is configured.
         setContentView(R.layout.activity_main);
+        textViewSpeed = findViewById(R.id.cur_speed);
+        //this.updateSpeed(null);
 
         // Initialize the mapboxMap view
         mapView = findViewById(R.id.mapView);
         mapView.onCreate(savedInstanceState);
         mapView.getMapAsync(this);
+        doStuff();
     }
+
 
     @Override
     public void onMapReady(@NonNull final MapboxMap mapboxMap) {
@@ -137,10 +183,12 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
                                 .directionsRoute(currentRoute)
                                 .shouldSimulateRoute(simulateRoute)
                                 .build();
-
                         // Call this method with Context from within an Activity
                         NavigationLauncher.startNavigation(MainActivity.this, options);
-                        
+                        //check if there is traffic based on duration and typical duration
+                        System.out.println(options.directionsRoute());
+
+
                         System.out.println("navigation Start");
                     }
 
@@ -155,6 +203,7 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
 
         });
 
+        //doStuff();
 
     }
 
@@ -172,12 +221,76 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
         );
         loadedMapStyle.addLayer(destinationSymbolLayer);
     }
+    @SuppressLint("MissingPermission")
+    private void doStuff() {
+        LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        if(locationManager != null){
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,0,0,this);
+        }
+        Toast.makeText(this,"Waiting GPS Connection!", Toast.LENGTH_SHORT).show();
+    }
+    //shows the current speed
+    private void updateSpeed(CLocation location){
+        float nCurrentSpeed =0;
+        if(location!=null){
+            location.setUserMetricUnits(this.useMetricUnits());
+            nCurrentSpeed = location.getSpeed();
+        }
+        Formatter fmt = new Formatter(new StringBuilder());
+        fmt.format(Locale.US,"%5.1f",nCurrentSpeed);
+        String strCurrentSpeed = fmt.toString();
+        strCurrentSpeed =strCurrentSpeed.replace(" ","0");
+        builder = new AlertDialog.Builder(MainActivity.this);
 
+        //String strUnits
+
+        if(this.useMetricUnits()){
+            textViewSpeed.setText(strCurrentSpeed+" km/h");
+        }else{
+            textViewSpeed.setText(strCurrentSpeed+" miles/h");
+        }
+        //check for recommended speed,for traffic ahead or incidents ahead
+        if (rec_speed < nCurrentSpeed){ //|| traffic_ahead > 1 || incidents == true){
+            builder.setMessage(R.string.dialog_message)
+                    .setCancelable(true)
+                    .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.cancel();
+                        }
+                    });
+            //Creating dialog box
+            AlertDialog alert = builder.create();
+            alert.show();
+            textViewSpeed.setBackgroundColor(Color.parseColor("#FF0000")); //red color
+            try {
+                Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+                Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
+                r.play();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        } else {
+            textViewSpeed.setBackgroundColor(Color.parseColor("#008000")); //green color
+        }
+    }
+
+    private boolean useMetricUnits() {
+        return true;
+    }
 
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        permissionsManager.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        //permissionsManager.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_LOCATION){
+            if(grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                doStuff();
+            }else {
+                permissionsManager = new PermissionsManager(this);
+                permissionsManager.requestLocationPermissions(this);
+            }
+        }
     }
 
     @Override
@@ -270,6 +383,25 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
 
                         }
                         navigationMapRoute.addRoute(currentRoute);
+                        double recom_speed = 0;
+                    int i = currentRoute.legs().size();
+                        int counter = 0;
+                        for (int j=0; j < i; j++ ){
+                            duration = currentRoute.legs().get(j).duration();
+                            duration_Typical = currentRoute.legs().get(j).durationTypical();
+                            if (duration > duration_Typical){
+                                counter = counter++;
+                               recom_speed = currentRoute.distance()/duration_Typical * 3.6 + recom_speed;
+                                System.out.println(rec_speed);
+                                System.out.println("Exei kinisi");
+
+                            }
+                        }
+                        System.out.println(currentRoute);
+                        if (counter > 0){
+                            rec_speed = recom_speed / counter;
+
+                        }
 
                     }
 
@@ -283,18 +415,19 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
     }
 
     @Override
-    public void onLocationChanged(@NonNull Location location) {
-
-        speed = (float) (location.getSpeed() * 3.6); //multiply the speed value by 3.6 to get km/h
-        System.out.println("Location Changed");
-        System.out.println(speed);
-        setContentView(R.layout.activity_main);
-        TextView textView = (TextView) findViewById(R.id.cur_speed);
-        textView.setText((int) speed);
-        System.out.println(speed);
+    public void onLocationChanged(Location location) {
+        if(location!=null){
+            CLocation myLocation = new CLocation(location,this.useMetricUnits());
+            this.updateSpeed(myLocation);
+        }
 
     }
-
+    private boolean canAccessLocation() {
+        return(hasPermission(Manifest.permission.ACCESS_FINE_LOCATION));
+    }
+    private boolean hasPermission(String perm) {
+        return(PackageManager.PERMISSION_GRANTED==checkSelfPermission(perm));
+    }
 
     @Override
     public void onResume() {
