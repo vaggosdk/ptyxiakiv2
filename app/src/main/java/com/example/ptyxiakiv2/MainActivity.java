@@ -92,7 +92,6 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
 
     private static final String DROPPED_MARKER_LAYER_ID = "DROPPED_MARKER_LAYER_ID";
     private MapView mapView;
-    private NavigationView navigationView;
     private MapboxMap mapboxMap;
     private static final String[] LOCATION_PERMS={
             Manifest.permission.ACCESS_FINE_LOCATION
@@ -117,7 +116,6 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
     OncomingTraffic oncomingTraffic = new OncomingTraffic();
     int traffic_ahead = oncomingTraffic.traffic_situation;
     boolean incidents = oncomingTraffic.incident_situation;
-    //private TextView speedWidget;
     private static final String[] INITIAL_PERMS={
             Manifest.permission.ACCESS_FINE_LOCATION
     };
@@ -131,14 +129,6 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
             //requestPermissions(INITIAL_PERMS, INITIAL_REQUEST);
             permissionsManager = new PermissionsManager(this);
             permissionsManager.requestLocationPermissions(this);
-//            while (!canAccessLocation()){
-//                try {
-//                    Thread.sleep(10);
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//
-//            }
         }
 
         // Mapbox access token is configured here. This needs to be called either in your application
@@ -148,7 +138,6 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
         // This contains the MapView in XML and needs to be called after the access token is configured.
         setContentView(R.layout.activity_main);
         textViewSpeed = findViewById(R.id.cur_speed);
-        //this.updateSpeed(null);
 
         // Initialize the mapboxMap view
         mapView = findViewById(R.id.mapView);
@@ -186,10 +175,6 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
                         // Call this method with Context from within an Activity
                         NavigationLauncher.startNavigation(MainActivity.this, options);
                         //check if there is traffic based on duration and typical duration
-                        System.out.println(options.directionsRoute());
-
-
-                        System.out.println("navigation Start");
                     }
 
                 });
@@ -242,15 +227,13 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
         strCurrentSpeed =strCurrentSpeed.replace(" ","0");
         builder = new AlertDialog.Builder(MainActivity.this);
 
-        //String strUnits
-
         if(this.useMetricUnits()){
             textViewSpeed.setText(strCurrentSpeed+" km/h");
         }else{
             textViewSpeed.setText(strCurrentSpeed+" miles/h");
         }
         //check for recommended speed,for traffic ahead or incidents ahead
-        if (rec_speed < nCurrentSpeed){ //|| traffic_ahead > 1 || incidents == true){
+        if (rec_speed < nCurrentSpeed){
             builder.setMessage(R.string.dialog_message)
                     .setCancelable(true)
                     .setPositiveButton("OK", new DialogInterface.OnClickListener() {
@@ -282,7 +265,6 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        //permissionsManager.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQUEST_LOCATION){
             if(grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
                 doStuff();
@@ -376,33 +358,19 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
 
                         // Draw the route on the map
                         if (navigationMapRoute != null) {
-                            //navigationMapRoute.removeRoute();
                             navigationMapRoute.updateRouteVisibilityTo(false);
                         } else {
                             navigationMapRoute = new NavigationMapRoute(null, mapView, mapboxMap, R.style.NavigationMapRoute);
 
                         }
                         navigationMapRoute.addRoute(currentRoute);
-                        double recom_speed = 0;
-                    int i = currentRoute.legs().size();
-                        int counter = 0;
-                        for (int j=0; j < i; j++ ){
-                            duration = currentRoute.legs().get(j).duration();
-                            duration_Typical = currentRoute.legs().get(j).durationTypical();
-                            if (duration > duration_Typical){
-                                counter = counter++;
-                               recom_speed = currentRoute.distance()/duration_Typical * 3.6 + recom_speed;
-                                System.out.println(rec_speed);
-                                System.out.println("Exei kinisi");
+
+                            duration = currentRoute.legs().get(0).duration();
+                            duration_Typical = currentRoute.legs().get(0).durationTypical();
+                            if (duration > duration_Typical || traffic_ahead >= 2 || incidents){
+                                rec_speed = currentRoute.distance()/duration_Typical * 3.6;
 
                             }
-                        }
-                        System.out.println(currentRoute);
-                        if (counter > 0){
-                            rec_speed = recom_speed / counter;
-
-                        }
-
                     }
 
                     @Override
