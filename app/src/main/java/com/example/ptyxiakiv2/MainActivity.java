@@ -126,7 +126,6 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
 
 
         if (!canAccessLocation()) {
-            //requestPermissions(INITIAL_PERMS, INITIAL_REQUEST);
             permissionsManager = new PermissionsManager(this);
             permissionsManager.requestLocationPermissions(this);
         }
